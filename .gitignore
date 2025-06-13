@@ -1,0 +1,4 @@
+*.txt
+.env
+agents/__pycache__/*
+__pycache__/*
