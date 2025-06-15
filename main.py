@@ -7,7 +7,6 @@ from dotenv import load_dotenv
 import requests
 import uvicorn
 
-from firecrawl import FirecrawlApp
 from agents.ResearchAgent import ResearchAgent
 from agents.SynthesizerAgent import SynthesizerAgent
 
@@ -25,15 +24,9 @@ app_state = {}
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("--- Starting app ---")
-    load_dotenv()
-
-    firecrawl_api_key = os.getenv("FIRECRAWL_API_KEY")
-    if not firecrawl_api_key:
-        raise ValueError("FIRECRAWL_API_KEY not found in environment.")
 
     # Initialize agents
-    firecrawl_client = FirecrawlApp(api_key=firecrawl_api_key)
-    research_agent = ResearchAgent(firecrawl_client)
+    research_agent = ResearchAgent()
     synthesizer_agent = SynthesizerAgent()
 
     # Register to app state
@@ -56,18 +49,30 @@ app = FastAPI(
 async def generate_text(query: UserQuery):
 
     try:
-        research_context = await app_state["research_agent"].run(query.prompt)
+        print(f"[REQUEST] Request recieved. User wants to research: {query.prompt}")
+        
+        
+        user_prompt = f"""
+            Reasech the topic {query.prompt} using the tools available to you, then combine all the research into one organized document with sections.
+            You MUST include the source URLs at the end of each section.
+        """
 
-        print("Research successful. Writing report using the prompt: ")
+        research_context = await app_state["research_agent"].run(user_prompt)
+
+        print("Research complete. Writing report using the prompt: ")
         report_prompt = f"""
         Generate a professional report with references on the topic: '{query.prompt}'.
-        Use the following research context as your sole source of information:
+        Use the following research context gathered by the Researcher as your sole source of information:
         ---
         {research_context.output}
         ---
         """
+        print(f"{report_prompt}")
 
         final_report = await app_state["synthesizer_agent"].run(report_prompt)
+
+        print(f"Final Report:\n {final_report.output}")
+
         return Report(report=final_report.output)
 
     except requests.RequestException as e:

@@ -1,4 +1,10 @@
 *.txt
 .env
 agents/__pycache__/*
+tools/__pycache__/*
 __pycache__/*
+
+
+# allow
+!requirements.txt
+test_research_tool.py

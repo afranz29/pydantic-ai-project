@@ -7,7 +7,7 @@ from pydantic_ai.providers.openai import OpenAIProvider
 class SynthesizerAgent:
     def __init__(self):
         model = OpenAIModel(
-            model_name='qwen3:8b',
+            model_name='qwen3:14b',
             provider=OpenAIProvider(base_url=f'http://{os.getenv('OLLAMA_HOST')}/v1')
         )
 
@@ -26,4 +26,5 @@ class SynthesizerAgent:
         )
 
     async def run(self, research_prompt: str):
+        print("[AGENT] Synthesizer agent called")
         return await self.agent.run(research_prompt)
