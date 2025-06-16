@@ -51,7 +51,7 @@ async def generate_text(query: UserQuery):
     try:
         print(f"[REQUEST] Request recieved. User wants to research: {query.prompt}")
         
-        
+        # research agent
         user_prompt = f"""
             Reasech the topic {query.prompt} using the tools available to you, then combine all the research into one organized document with sections.
             You MUST include the source URLs at the end of each section.
@@ -59,6 +59,8 @@ async def generate_text(query: UserQuery):
 
         research_context = await app_state["research_agent"].run(user_prompt)
 
+
+        # synthesizer (report writer) agent
         print("Research complete. Writing report using the prompt: ")
         report_prompt = f"""
         Generate a professional report with references on the topic: '{query.prompt}'.
@@ -69,6 +71,7 @@ async def generate_text(query: UserQuery):
         """
         print(f"{report_prompt}")
 
+        print(f"[AGENT] Synthesizer Agent called. Agent writing report\n")
         final_report = await app_state["synthesizer_agent"].run(report_prompt)
 
         print(f"Final Report:\n {final_report.output}")
