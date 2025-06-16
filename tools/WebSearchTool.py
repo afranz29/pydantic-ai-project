@@ -1,4 +1,5 @@
 import re
+from utils.logger import tool_logger
 from duckduckgo_search import DDGS
 from crawl4ai import AsyncWebCrawler, CrawlerRunConfig
 from crawl4ai.content_filter_strategy import PruningContentFilter
@@ -12,7 +13,7 @@ class SubQuery(BaseModel):
 class WebSearchTool:
 
     async def web_search(self, query: SubQuery) -> str:
-        print(f"[TOOL] Searching subprompt: {query.sub_prompt}")
+        tool_logger.info(f"Searching subprompt: {query.sub_prompt}")
 
         # DUCKDUCKGO SEARCH
         # urls of sources
@@ -57,7 +58,7 @@ class WebSearchTool:
                         url=f"{url}",
                         config=config
                     )
-                    print(f"Crawled {result["href"]}")
+                    tool_logger.info(f"Crawled {result["href"]}")
 
                 if not crawl_result:
                     return f"Crawl failed for {result["href"]}"
@@ -65,17 +66,17 @@ class WebSearchTool:
 
 
                 page_markdown = crawl_result.markdown.fit_markdown
-                cleaned_markdown = re.sub(r'\[([^\]]+)\]\((https?://[^\)]+)\)', r'\1', page_markdown)
-
-                if not cleaned_markdown:
+                if not page_markdown:
                     cleaned_markdown = "Empty Result: may need another tool to crawl.\nIgnore this source."
+                else:
+                    cleaned_markdown = re.sub(r'\[([^\]]+)\]\((https?://[^\)]+)\)', r'\1', page_markdown)
 
                 page = f"\nTitle: {title}\nContent: {cleaned_markdown}\nURL: {url}"
                 cleaned_results.append(page)
 
 
             combined_results = "\n---\n".join(cleaned_results)
-            print(f"[TOOL] ✔ Research complete for subprompt {query.sub_prompt}")
+            tool_logger.info(f"[✔] Research complete for subprompt {query.sub_prompt}")
             return combined_results
 
         except Exception as e:

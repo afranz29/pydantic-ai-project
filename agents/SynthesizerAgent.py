@@ -1,4 +1,6 @@
 import os
+from utils.logger import agent_logger
+
 from pydantic_ai import Agent
 from pydantic_ai.models.openai import OpenAIModel
 from pydantic_ai.providers.openai import OpenAIProvider
@@ -19,24 +21,22 @@ class SynthesizerAgent:
 
             TASK:
             1. Carefully read and analyze the provided research context.
-            2. Write a research report based on the context that is well-structured and easy-to-follow.
+            2. Write a formal research report based on the context that is well-structured and easy-to-follow.
             3. Use clear headings for each section.
-            4. USE PARAGRAPHS.
-            5. Integrate and qoute relevant information from the research context smoothly into your writing.
+            4. Integrate and qoute relevant information from the research context smoothly into your writing.
+            5. USE PARAGRAPHS. 
+            6. YOU MUST INCLUDE A REFERENCES SECTION AT THE END OF THE REPORT. INCLUDE ALL URLS.
+                For example:
 
-            REPORT RULES:
+                References:
+                    1. https://example.com/article1
+                    2. https://another-example.org/post
+            
+            REPORT RULES AND STYLE:
             - The report MUST be at least 800 words.
             - You MUST give the report a title.
             - Do NOT summarize — compose a full, stand-alone report based entirely on the given content.
             - You MUST qoute the context if you copy from it.
-            - You MUST include a section at the end of the report. It MUST be titled "References" and list all source URLs from the context.
-                For example:
-
-            References:
-                1. https://example.com/article1
-                2. https://another-example.org/post
-
-            STYLE:
             - Use formal academic language.
             - Do NOT bullet points and long lists. Use paragraphs.
             - Do NOT use bold, italic, underlining, or any other formatting for emphasis.
@@ -50,6 +50,7 @@ class SynthesizerAgent:
         )
 
     async def run(self, research_prompt: str):
+        agent_logger.info("Synthesizer agent called")
         result = await self.agent.run(research_prompt)
 
         result.output = result.output.split("</think>")[-1].strip()

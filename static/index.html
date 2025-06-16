@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Research Report Builder</title>
+  <style>
+    body { font-family: Arial; max-width: 800px; margin: auto; padding: 20px; }
+    input[type="text"] { width: 100%; padding: 10px; margin-top: 10px; }
+    button { padding: 10px 20px; margin-top: 10px; }
+    #report, #json-output {
+      background: #f9f9f9;
+      padding: 20px;
+      margin-top: 20px;
+      border: 1px solid #ccc;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    h2 { margin-top: 40px; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+  <h1>Research Report Builder</h1>
+  <label for="topic">Enter a topic:</label>
+  <input type="text" id="topic" placeholder="e.g., Renewable Energy">
+  <button onclick="generateReport()">Generate Report</button>
+
+  <h2>Formatted Report:</h2>
+  <div id="report">Your report will appear here.</div>
+
+  <h2>Raw JSON Output:</h2>
+  <div id="json-output">The full response object will appear here.</div>
+
+  <script>
+    async function generateReport() {
+      const button = document.querySelector('button');
+      const topic = document.getElementById('topic').value.trim();
+      if (!topic) {
+        alert("Please enter a topic.");
+        return;
+      }
+
+      // Disable the button
+      button.disabled = true;
+      button.textContent = "Generating...";
+
+      document.getElementById('report').textContent = "Generating report...";
+      document.getElementById('json-output').textContent = "";
+
+      try {
+        const response = await fetch('http://localhost:8000/generate-report', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: topic })
+        });
+
+        const data = await response.json();
+
+        if (data.report) {
+          document.getElementById('report').innerHTML = marked.parse(data.report);
+        } else {
+          document.getElementById('report').textContent = 'No report received.';
+        }
+
+        document.getElementById('json-output').textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        document.getElementById('report').textContent = 'Error generating report.';
+        document.getElementById('json-output').textContent = err.toString();
+        console.error(err);
+      } finally {
+        // Re-enable the button
+        button.disabled = false;
+        button.textContent = "Generate Report";
+      }
+    }
+
+  </script>
+</body>
+</html>

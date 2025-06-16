@@ -1,4 +1,6 @@
 import os
+from utils.logger import agent_logger
+
 from types import SimpleNamespace
 from pydantic_ai import Agent, RunContext
 from pydantic_ai.tools import Tool
@@ -23,8 +25,6 @@ class ResearchAgent:
             model_name='llama3.1:8b',
             provider=OpenAIProvider(base_url=f'http://{os.getenv("OLLAMA_HOST")}/v1')
         )
-
-        print(model)
 
         web_search_tool = Tool(
             function=wrapped_web_search,
@@ -58,7 +58,7 @@ class ResearchAgent:
         )
 
     async def run(self, user_prompt: str):
-        print("[AGENT] Research agent called")
+        agent_logger.info("Research agent called")
         self.logged_outputs.clear()  # Reset for each run
 
         await self.agent.run(user_prompt)

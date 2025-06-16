@@ -1,14 +1,20 @@
 import os
+from utils.logger import logger
+
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import RedirectResponse
+
 from pydantic import BaseModel
-from dotenv import load_dotenv
 import requests
 import uvicorn
 
 from agents.ResearchAgent import ResearchAgent
 from agents.SynthesizerAgent import SynthesizerAgent
+
+from utils.save_file import save_to_output_file
 
 
 # Data models
@@ -23,7 +29,7 @@ app_state = {}
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("--- Starting app ---")
+    
 
     # Initialize agents
     research_agent = ResearchAgent()
@@ -32,7 +38,7 @@ async def lifespan(app: FastAPI):
     # Register to app state
     app_state["research_agent"] = research_agent
     app_state["synthesizer_agent"] = synthesizer_agent
-    print("--- App live ---")
+    logger.info("App is live")
 
     yield
 
@@ -44,12 +50,13 @@ app = FastAPI(
     title="Autonomous Report Builder",
     lifespan=lifespan
 )
+app.mount("/app", StaticFiles(directory="static", html=True), name="static")
 
 @app.post("/generate-report", response_model=Report)
 async def generate_text(query: UserQuery):
 
     try:
-        print(f"[REQUEST] Request recieved. User wants to research: {query.prompt}")
+        logger.info(f"[REQUEST] Request recieved. User wants to research: {query.prompt}")
         
         # research agent
         user_prompt = f"""
@@ -61,26 +68,30 @@ async def generate_text(query: UserQuery):
 
 
         # synthesizer (report writer) agent
-        print("Research complete. Writing report using the prompt: ")
+        logger.info("Research complete.")
         report_prompt = f"""
         Generate a professional report with references on the topic: '{query.prompt}'.
         Use the following research context gathered by the Researcher as your sole source of information:
         ---
         {research_context.output}
         ---
+        
         """
-        print(f"{report_prompt}")
+        save_to_output_file(report_prompt)
 
-        print(f"[AGENT] Synthesizer Agent called. Agent writing report\n")
         final_report = await app_state["synthesizer_agent"].run(report_prompt)
-
-        print(f"Final Report:\n {final_report.output}")
+        save_to_output_file(final_report.output)
+        logger.info("Report done")
 
         return Report(report=final_report.output)
 
     except requests.RequestException as e:
+        logger.error(f"Ollama communication error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Ollama communication error: {str(e)}")
 
+@app.get("/")
+async def root():
+    return RedirectResponse(url="/app")
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

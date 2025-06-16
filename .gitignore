@@ -2,9 +2,11 @@
 .env
 agents/__pycache__/*
 tools/__pycache__/*
+utils/__pycache__/*
 __pycache__/*
-
+test_research_tool.py
+app.log
 
 # allow
 !requirements.txt
-test_research_tool.py
+
