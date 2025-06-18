@@ -1,28 +1,26 @@
-import os
-from utils.logger import logger
-
-from contextlib import asynccontextmanager
+import requests
+import uvicorn
+import json
 
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
+from contextlib import asynccontextmanager
 
 from pydantic import BaseModel
-import requests
-import uvicorn
+from models.ResearchModel import StructuredResearchOutput
+from models.ReportModel import Report
 
 from agents.ResearchAgent import ResearchAgent
 from agents.SynthesizerAgent import SynthesizerAgent
 
 from utils.save_file import save_to_output_file
+from utils.logger import logger
 
 
 # Data models
 class UserQuery(BaseModel):
     prompt: str
-
-class Report(BaseModel):
-    report: str
 
 # App state
 app_state = {}
@@ -52,6 +50,7 @@ app = FastAPI(
 )
 app.mount("/app", StaticFiles(directory="static", html=True), name="static")
 
+
 @app.post("/generate-report", response_model=Report)
 async def generate_text(query: UserQuery):
 
@@ -60,12 +59,13 @@ async def generate_text(query: UserQuery):
         
         # research agent
         user_prompt = f"""
-            Reasech the topic {query.prompt} using the tools available to you, then combine all the research into one organized document with sections.
+            Research the topic {query.prompt} using the tools available to you, then combine all the research into one organized document with sections.
             You MUST include the source URLs at the end of each section.
         """
 
-        research_context = await app_state["research_agent"].run(user_prompt)
+        research_context: StructuredResearchOutput = await app_state["research_agent"].run(user_prompt)
 
+        research_json = research_context.model_dump_json(indent=2)
 
         # synthesizer (report writer) agent
         logger.info("Research complete.")
@@ -73,17 +73,25 @@ async def generate_text(query: UserQuery):
         Generate a professional report with references on the topic: '{query.prompt}'.
         Use the following research context gathered by the Researcher as your sole source of information:
         ---
-        {research_context.output}
+        JSON SCHEMA:
+        - query: the original user prompt
+        - sections: a list of subquestions, each with:
+            - subquestion: a refined research question
+            - sources: list of articles, each with title, content, and URL
+
+        JSON CONTENT:
+        {research_json}
         ---
         
         """
         save_to_output_file(report_prompt)
 
         final_report = await app_state["synthesizer_agent"].run(report_prompt)
-        save_to_output_file(final_report.output)
+
+        save_to_output_file(str(final_report.output))
         logger.info("Report done")
 
-        return Report(report=final_report.output)
+        return final_report.output
 
     except requests.RequestException as e:
         logger.error(f"Ollama communication error: {str(e)}")

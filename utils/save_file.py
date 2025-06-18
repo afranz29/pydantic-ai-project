@@ -1,7 +1,8 @@
 # save something
+FILE_NAME = "output21.txt"
 
 def save_to_output_file(text):
 
-    with open("output19.txt", "a") as f:
+    with open(FILE_NAME, "a") as f:
         f.write(text)
-    print("[DEBUG] Report prompt written to report_prompt.txt")
+    print(f"[DEBUG] Report prompt written to `{FILE_NAME}` file")

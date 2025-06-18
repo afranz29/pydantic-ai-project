@@ -1,25 +1,31 @@
 import os
-from utils.logger import agent_logger
+from typing import List
 
-from types import SimpleNamespace
-from pydantic_ai import Agent, RunContext
+from pydantic_ai import Agent
 from pydantic_ai.tools import Tool
 from pydantic_ai.models.openai import OpenAIModel
 from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.settings import ModelSettings
 
 from tools.WebSearchTool import WebSearchTool, SubQuery
+from models.ResearchModel import ResearchSection, StructuredResearchOutput
+from utils.logger import agent_logger, tool_logger
 
 class ResearchAgent:
     def __init__(self):
         self.s_tool = WebSearchTool()
-        self.logged_outputs = []
+        self.logged_outputs: List[ResearchSection] = []
 
         # Wrap the tool function to capture outputs
         async def wrapped_web_search(query: SubQuery):
-            result = await self.s_tool.web_search(query)
-            self.logged_outputs.append(result)
-            return result
+            try:
+                result = await self.s_tool.web_search(query)
+                self.logged_outputs.append(result)
+                return result
+            except Exception as e:
+                tool_logger.warning(f"Search failed for subquery: {query.sub_prompt} - {e}")
+                return None
+
 
         model = OpenAIModel(
             model_name='llama3.1:8b',
@@ -62,5 +68,11 @@ class ResearchAgent:
         self.logged_outputs.clear()  # Reset for each run
 
         await self.agent.run(user_prompt)
+        
+        if not self.logged_outputs:
+            raise RuntimeError("All subqueries failed. No research could be gathered.")
 
-        return SimpleNamespace(output="\n\n====== END OF TOPIC ======\n\n".join(self.logged_outputs))
+        return StructuredResearchOutput(
+            query=user_prompt,
+            sections=self.logged_outputs
+        )

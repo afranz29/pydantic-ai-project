@@ -1,16 +1,17 @@
-import os
 from utils.logger import agent_logger
 
 from pydantic_ai import Agent
 from pydantic_ai.models.openai import OpenAIModel
 from pydantic_ai.providers.openai import OpenAIProvider
 
+from models.ReportModel import Report, ReportSection
+
 
 class SynthesizerAgent:
     def __init__(self):
         model = OpenAIModel(
-            model_name='qwen3:14b',
-            provider=OpenAIProvider(base_url=f'http://{os.getenv('OLLAMA_HOST')}/v1')
+            model_name='gpt-4o-mini',
+            provider=OpenAIProvider()
         )
 
         self.agent = Agent(
@@ -25,13 +26,8 @@ class SynthesizerAgent:
             3. Use clear headings for each section.
             4. Integrate and qoute relevant information from the research context smoothly into your writing.
             5. USE PARAGRAPHS. 
-            6. YOU MUST INCLUDE A REFERENCES SECTION AT THE END OF THE REPORT. INCLUDE ALL URLS.
-                For example:
+            6. You MUST include a 'References' section at the end. You MUST list all sources used.
 
-                References:
-                    1. https://example.com/article1
-                    2. https://another-example.org/post
-            
             REPORT RULES AND STYLE:
             - The report MUST be at least 800 words.
             - You MUST give the report a title.
@@ -46,13 +42,12 @@ class SynthesizerAgent:
             - Do NOT make up references, sources, or qoutes. 
             - Only include URLs that appear in the context.
 
-            """
+            """,
+            output_type=Report
         )
 
     async def run(self, research_prompt: str):
         agent_logger.info("Synthesizer agent called")
         result = await self.agent.run(research_prompt)
-
-        result.output = result.output.split("</think>")[-1].strip()
 
         return result

@@ -3,10 +3,12 @@
 agents/__pycache__/*
 tools/__pycache__/*
 utils/__pycache__/*
+models/__pycache__/*
 __pycache__/*
-test_research_tool.py
+testers/*
 app.log
 
 # allow
 !requirements.txt
+
 
