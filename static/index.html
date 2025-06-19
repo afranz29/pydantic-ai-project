@@ -3,29 +3,37 @@
 <head>
   <title>Research Report Builder</title>
   <style>
-    body { font-family: Arial; max-width: 800px; margin: auto; padding: 20px; }
-    input[type="text"] { width: 100%; padding: 10px; margin-top: 10px; }
-    button { padding: 10px 20px; margin-top: 10px; }
-    #report, #json-output {
+    /* Overall page and container styles are kept */
+    body { font-family: Arial, sans-serif; max-width: 800px; margin: auto; padding: 20px; line-height: 1.6; }
+    input[type="text"] { width: 100%; padding: 10px; margin-top: 10px; box-sizing: border-box; }
+    button { padding: 10px 20px; margin-top: 10px; cursor: pointer; }
+    #report-container {
       background: #f9f9f9;
       padding: 20px;
       margin-top: 20px;
       border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    #json-output {
+      background: #282c34;
+      color: #abb2bf;
+      padding: 20px;
+      margin-top: 20px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
       white-space: pre-wrap;
       word-wrap: break-word;
     }
-    h2 { margin-top: 40px; }
+
   </style>
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
   <h1>Research Report Builder</h1>
   <label for="topic">Enter a topic:</label>
-  <input type="text" id="topic" placeholder="e.g., Renewable Energy">
+  <input type="text" id="topic" placeholder="e.g., Recent advancements in quantum computing">
   <button onclick="generateReport()">Generate Report</button>
 
-  <h2>Formatted Report:</h2>
-  <div id="report">Your report will appear here.</div>
+  <div id="report-container">Your report will appear here.</div>
 
   <h2>Raw JSON Output:</h2>
   <div id="json-output">The full response object will appear here.</div>
@@ -34,17 +42,19 @@
     async function generateReport() {
       const button = document.querySelector('button');
       const topic = document.getElementById('topic').value.trim();
+      const reportDiv = document.getElementById('report-container');
+      const jsonDiv = document.getElementById('json-output');
+
       if (!topic) {
         alert("Please enter a topic.");
         return;
       }
 
-      // Disable the button
+      // Disable the button and show loading state
       button.disabled = true;
       button.textContent = "Generating...";
-
-      document.getElementById('report').textContent = "Generating report...";
-      document.getElementById('json-output').textContent = "";
+      reportDiv.innerHTML = "<h2>Generating Report...</h2><p>The research and writing process can take a minute or two. Please wait.</p>";
+      jsonDiv.textContent = "";
 
       try {
         const response = await fetch('http://localhost:8000/generate-report', {
@@ -55,16 +65,42 @@
 
         const data = await response.json();
 
-        if (data.report) {
-          document.getElementById('report').innerHTML = marked.parse(data.report);
+        if (response.ok && data.title) {
+          let reportHtml = `<h1>${data.title}</h1>`;
+          reportHtml += `<h3>Abstract</h3><p>${data.abstract}</p>`;
+
+          // Loop through the report sections
+          data.sections.forEach(section => {
+            reportHtml += `<h2>${section.header}</h2><p>${section.content}</p>`;
+          });
+
+          // --- EDITED SECTION ---
+          // Check for the new 'references' object and the 'sources' array within it.
+          if (data.references && data.references.sources && data.references.sources.length > 0) {
+            // Use the header from the references object
+            reportHtml += `<h2>${data.references.header}</h2><ul>`; 
+            // Loop through the sources within the references object
+            data.references.sources.forEach(source => {
+              reportHtml += `<li><a href="${source}" target="_blank">${source}</a></li>`;
+            });
+            reportHtml += `</ul>`;
+          }
+
+          reportDiv.innerHTML = reportHtml;
         } else {
-          document.getElementById('report').textContent = 'No report received.';
+          // Handle cases where the API returns an error
+          reportDiv.textContent = `Error: Failed to generate the report. Server responded with status ${response.status}.`;
+          if (data.detail) {
+             reportDiv.textContent += `\nDetails: ${JSON.stringify(data.detail)}`;
+          }
         }
 
-        document.getElementById('json-output').textContent = JSON.stringify(data, null, 2);
+        // Display the raw JSON regardless of success or failure for debugging
+        jsonDiv.textContent = JSON.stringify(data, null, 2);
+
       } catch (err) {
-        document.getElementById('report').textContent = 'Error generating report.';
-        document.getElementById('json-output').textContent = err.toString();
+        reportDiv.textContent = 'An error occurred while fetching the report. Please check the console for details.';
+        jsonDiv.textContent = err.toString();
         console.error(err);
       } finally {
         // Re-enable the button
@@ -72,7 +108,6 @@
         button.textContent = "Generate Report";
       }
     }
-
   </script>
 </body>
 </html>

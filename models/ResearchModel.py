@@ -1,6 +1,12 @@
 from pydantic import BaseModel
 from typing import List
 
+
+class NormalizedSearchResult(BaseModel):
+    title: str
+    url: str
+
+
 class SourceSection(BaseModel):
     title: str
     content: str
@@ -13,7 +19,7 @@ class ResearchSection(BaseModel):
 
 
 class StructuredResearchOutput(BaseModel):
-    query: str
+    original_query: str
     sections: List[ResearchSection]
 
 

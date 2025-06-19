@@ -4,6 +4,7 @@ agents/__pycache__/*
 tools/__pycache__/*
 utils/__pycache__/*
 models/__pycache__/*
+config/__pycache__/*
 __pycache__/*
 testers/*
 app.log

@@ -1,6 +1,6 @@
 import requests
 import uvicorn
-import json
+import asyncio
 
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
@@ -10,17 +10,16 @@ from contextlib import asynccontextmanager
 from pydantic import BaseModel
 from models.ResearchModel import StructuredResearchOutput
 from models.ReportModel import Report
+from models.QueryModels import UserQuery
 
 from agents.ResearchAgent import ResearchAgent
 from agents.SynthesizerAgent import SynthesizerAgent
 
-from utils.save_file import save_to_output_file
+from utils.save_to_file import save_to_output_file
 from utils.logger import logger
 
+from config.config import app_settings
 
-# Data models
-class UserQuery(BaseModel):
-    prompt: str
 
 # App state
 app_state = {}
@@ -59,11 +58,10 @@ async def generate_text(query: UserQuery):
         
         # research agent
         user_prompt = f"""
-            Research the topic {query.prompt} using the tools available to you, then combine all the research into one organized document with sections.
-            You MUST include the source URLs at the end of each section.
+            Research the topic {query.prompt} by generating {app_settings.RESEARCH_AGENT.NUM_SUB_QUESTIONS} subquestions and using the tools available to answer them.
         """
 
-        research_context: StructuredResearchOutput = await app_state["research_agent"].run(user_prompt)
+        research_context: StructuredResearchOutput = await app_state["research_agent"].run(user_prompt, query)
 
         research_json = research_context.model_dump_json(indent=2)
 
@@ -71,10 +69,10 @@ async def generate_text(query: UserQuery):
         logger.info("Research complete.")
         report_prompt = f"""
         Generate a professional report with references on the topic: '{query.prompt}'.
-        Use the following research context gathered by the Researcher as your sole source of information:
+        Use the following research context as your sole source of information:
         ---
         JSON SCHEMA:
-        - query: the original user prompt
+        - original_query: the original user prompt
         - sections: a list of subquestions, each with:
             - subquestion: a refined research question
             - sources: list of articles, each with title, content, and URL
@@ -84,11 +82,13 @@ async def generate_text(query: UserQuery):
         ---
         
         """
-        save_to_output_file(report_prompt)
+        save_to_output_file(report_prompt, "Report Prompt")
+
+        await asyncio.sleep(10)
 
         final_report = await app_state["synthesizer_agent"].run(report_prompt)
 
-        save_to_output_file(str(final_report.output))
+        save_to_output_file(str(final_report.output), "Final Report")
         logger.info("Report done")
 
         return final_report.output

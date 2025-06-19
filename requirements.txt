@@ -1,4 +1,5 @@
 duckduckgo-search
+googlesearch-python
 crawl4ai
 uvicorn
 requests

@@ -9,7 +9,9 @@ from pydantic_ai.settings import ModelSettings
 
 from tools.WebSearchTool import WebSearchTool, SubQuery
 from models.ResearchModel import ResearchSection, StructuredResearchOutput
+from models.QueryModels import SubQuery, UserQuery
 from utils.logger import agent_logger, tool_logger
+from config.config import app_settings
 
 class ResearchAgent:
     def __init__(self):
@@ -37,42 +39,44 @@ class ResearchAgent:
             name="web_search"
         )
 
-        settings = ModelSettings(parallel_tool_calls=True)
+        model_settings = ModelSettings(parallel_tool_calls=True)
 
         self.agent = Agent(
             model=model,
-            model_settings=settings,
+            model_settings=model_settings,
             system_prompt=f"""
             You are the top researcher with access to a tool to search the web called `web_search`. Your task is to research the user's query and provide comprehensive, factual information.
 
             TASK:
-            1. First, based on the user's query, generate exactly **5** logical sub-questions.
+            1. First, based on the user's query, generate exactly **{app_settings.RESEARCH_AGENT.NUM_SUB_QUESTIONS}** logical sub-questions.
             2. Next, for each question, use the search tool like this:
                 web_search(sub_prompt="...")
                 YOU MUST INVOKE THE TOOL FOR EACH QUESTION.
 
             IMPORTANT RULES:
-            - You MUST call `web_search` five times — once for each sub-question.
-            - You MUST make all five tool calls in the same step.
+            - You MUST call `web_search` {app_settings.RESEARCH_AGENT.NUM_SUB_QUESTIONS} times — once for each sub-question.
+            - You MUST make all {app_settings.RESEARCH_AGENT.NUM_SUB_QUESTIONS} tool calls in the same step.
             - Do NOT describe what you are doing. Only output tool calls.
             - Do NOT write a plan or a summary.
-            - After calling the tool five times, STOP.
+            - After calling the tool {app_settings.RESEARCH_AGENT.NUM_SUB_QUESTIONS} times, STOP.
 
             After your tool calls, stop.
             """,
             tools=[web_search_tool]
         )
 
-    async def run(self, user_prompt: str):
+    async def run(self, user_prompt: str, original_query: UserQuery):
         agent_logger.info("Research agent called")
         self.logged_outputs.clear()  # Reset for each run
 
         await self.agent.run(user_prompt)
         
-        if not self.logged_outputs:
+        valid_sections = [output for output in self.logged_outputs if output is not None]
+
+        if not valid_sections:
             raise RuntimeError("All subqueries failed. No research could be gathered.")
 
         return StructuredResearchOutput(
-            query=user_prompt,
-            sections=self.logged_outputs
+            original_query=original_query.prompt,
+            sections=valid_sections
         )
