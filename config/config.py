@@ -45,7 +45,6 @@ class Settings(BaseSettings):
 
     # App-level secrets (ensure these are in your .env file)
     OLLAMA_HOST: str
-    OPENAI_API_KEY: str
 
     class Config:
         env_file = ".env"
@@ -54,5 +53,5 @@ class Settings(BaseSettings):
         # e.g., WEB_SEARCH_TOOL__NUM_SEARCH_RESULTS=5
         env_nested_delimiter = '__'
 
-# Create a single, importable instance of the settings
+# importable instance of the settings
 app_settings = Settings()
