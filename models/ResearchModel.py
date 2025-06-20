@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, model_validator
 from typing import List
 
 
@@ -20,7 +20,35 @@ class ResearchSection(BaseModel):
 
 class StructuredResearchOutput(BaseModel):
     original_query: str
-    sections: List[ResearchSection]
+    sections: List[ResearchSection] = Field(
+        description="A list of sections. Each secction relates to a subtopic."
+    )
+    all_urls: List[str] = Field(
+        default=[],
+        description="A list of all source URLs from all sections to be used as references"
+    )
+
+    @model_validator(mode='after')
+    def populate_all_source_urls(self) -> 'StructuredResearchOutput':
+        all_urls = set()
+        # get all the urls and put them in all_urls field
+        if self.sections:
+            for section in self.sections:
+                if section and section.sources:
+                    for source in section.sources:
+                        if source and source.url:
+                            all_urls.add(source.url)
+        
+        self.all_urls = sorted(list(all_urls))
+
+        # delete url from each source, urls only appear at the end of the final output
+        if self.sections:
+            for section in self.sections:
+                if section and section.sources:
+                    for source in section.sources:
+                        if hasattr(source, 'url'):
+                            delattr(source, 'url')
+        return self
 
 
 """

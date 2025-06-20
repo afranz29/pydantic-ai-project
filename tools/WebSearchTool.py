@@ -158,8 +158,8 @@ class WebSearchTool:
         else:
             tool_logger.warning(f"All sources failed to crawl for subprompt: {query.sub_prompt}")
             return None
+
             
-        
     async def web_search(self, query: SubQuery) -> SourceSection:
         tool_logger.info(f"Searching subprompt: {query.sub_prompt}")
 

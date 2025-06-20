@@ -64,21 +64,31 @@ async def generate_text(query: UserQuery):
         research_context: StructuredResearchOutput = await app_state["research_agent"].run(user_prompt, query)
 
         research_json = research_context.model_dump_json(indent=2)
+        reference_urls = research_context.all_urls
 
         # synthesizer (report writer) agent
         logger.info("Research complete.")
         report_prompt = f"""
-        Generate a professional report with references on the topic: '{query.prompt}'.
-        Use the following research context as your sole source of information:
+        Generate a professional report on the topic: '{query.prompt}'.
+        
+        Use the following JSON as context as your sole source of information:
         ---
         JSON SCHEMA:
         - original_query: the original user prompt
         - sections: a list of subquestions, each with:
             - subquestion: a refined research question
-            - sources: list of articles, each with title, content, and URL
+            - sources: list of articles, each with title and content
+        - all_urls: a list of all source URLs to be used for the references section
 
-        JSON CONTENT:
+            
+        JSON CONTEXT:
         {research_json}
+        ===
+        
+        You MUST use the following list of URLs to populate the 'references.sources' field in the final report. This list cannot be empty.
+        ---
+        URLS FOR REFERENCES:
+        {reference_urls}
         ---
         
         """
